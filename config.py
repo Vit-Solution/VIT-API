@@ -1,3 +1,4 @@
+from datetime import timedelta
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,6 +8,7 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     secret_key: str = ""
     algorithm: str = ""
+    access_token_expire_minutes: int = 30
     mongodb_connection_string: str = ""
     redis_host: str = ""
     redis_port: int = ""
@@ -21,6 +23,17 @@ def get_settings() -> Settings:
     print(f"BASE_URL: ", settings.base_url)
     return settings
 
-# print("ENV_NAME: ", get_settings().env_name)
-# print("BASE_URL: ", get_settings().base_url)
-# print("DATABASE_URL: ", get_settings().database_url)
+
+# --------------------------------------------- mongo connection string ---------------------------------------------
+mongodb_connection_string: str = get_settings().mongodb_connection_string
+
+# --------------------------------------------- redis connection ---------------------------------------------
+REDIS_HOST = get_settings().redis_host
+REDIS_PORT = get_settings().redis_port
+REDIS_PASSWORD = get_settings().redis_password
+REDIS_EXPIRE = timedelta(minutes=5)  # Cache expiration time
+
+# --------------------------------------------- jwt connection ---------------------------------------------
+SECRET_KEY = get_settings().secret_key
+ALGORITHM = get_settings().algorithm
+ACCESS_TOKEN_EXPIRE = get_settings().access_token_expire_minutes

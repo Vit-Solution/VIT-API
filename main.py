@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from auth.auth import auth_route
 
 
 app = FastAPI(
@@ -7,9 +9,24 @@ app = FastAPI(
         version="1.0.0",
         contact={
             "name": "VIT Team",
-            # "email": ""
         }
     )
+
+origins = [
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_route)
+
 
 
 @app.get("/")
@@ -20,9 +37,6 @@ async def home():
         "message": "Welcome to BizBot API",
         "frontend_url": frontend_url
     }
-
-
-
 
 
 
