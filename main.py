@@ -35,6 +35,9 @@ async def home():
     
     return {
         "message": "Welcome to BizBot API",
+        "version": "1.0.0",
+        "description": "API for Business's FAQ's and Knowledge Base",
+        "Documentation": "append /docs to the base url to access the documentation",
         "frontend_url": frontend_url
     }
 
