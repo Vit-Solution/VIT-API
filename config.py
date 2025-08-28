@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     redis_host: str = ""
     redis_port: int = 6379
     redis_password: str = ""
+    rag_api_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 
@@ -37,3 +38,6 @@ REDIS_EXPIRE = timedelta(minutes=5)  # Cache expiration time
 SECRET_KEY = get_settings().secret_key
 ALGORITHM = get_settings().algorithm
 ACCESS_TOKEN_EXPIRE = get_settings().access_token_expire_minutes
+
+# --------------------------------------------- rag api connection ---------------------------------------------
+RAG_API_URL = get_settings().rag_api_url

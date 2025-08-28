@@ -8,7 +8,7 @@ from config import ACCESS_TOKEN_EXPIRE
 from .dependencies import authenticate_user, create_access_token, create_user, get_user, hash_password
 from auth.db_connection import db
 from auth.models import Token, Users
-from auth.schemas import Signup
+from auth.schemas import Signup, SignupResponse
 
 
 auth_route = APIRouter(
@@ -19,6 +19,13 @@ auth_route = APIRouter(
 
 @auth_route.post("/signin")
 async def sign_in(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+    """
+    Sign in with a username (username here should be your bizzbot registration email) and password.
+
+    Response:
+        Token: The access token to use for further requests
+    """
+    
     user = authenticate_user(form_data.username, form_data.password)
 
     if not user:
@@ -40,7 +47,13 @@ async def sign_in(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) ->
 
 
 @auth_route.post("/signup")
-async def sign_up(user: Signup):
+async def sign_up(user: Signup) -> SignupResponse:
+    """
+    Sign up with a username, password, full name and phone number.
+
+    Response:
+        User: The newly created user details.
+    """
     # check if user already exists
     already_exists = get_user(user.email)
 

@@ -54,7 +54,7 @@ def get_db():
         # ping the server to check connectivity
         client.server_info()
         client.admin.command('ping')
-        print("Pinged your deployment. You successfully connected to MongoDB!")
+        print("\nPinged your deployment. You successfully connected to MongoDB!")
         db = client['vit']
         return db
     except Exception as e:
@@ -69,15 +69,18 @@ collection_names = [
     'chats',
     'messages',
     'faqs',
-    'error_logs',    
+    'error_logs',
 ]
 
 for collection_name in collection_names:
     try:
         db.create_collection(collection_name, check_exists=True,)
-        print(collection_name, "collection created")
+        print(f"{collection_name}'s collection created")
     except CollectionInvalid:
-        print("Collection already exists. Skipping creation.")
-
+        print(f"{collection_name}'s collection already exists")
 
 users_collection = db['users']
+chats_collection = db['chats']
+messages_collection = db['messages']
+faqs_collection = db['faqs']
+error_logs_collection = db['error_logs']

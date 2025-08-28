@@ -12,7 +12,7 @@ from .models import TokenData, Users
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/signin")
 
 
 def verify_password(plain_password, hashed_password):
@@ -106,7 +106,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     if user is None:
         raise credentials_exception
     
-    return user
+    return user.id
 
 
 # insert new user

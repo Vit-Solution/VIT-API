@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth import auth_route
+from bizzbot.router import bizzbot
 
 
 app = FastAPI(
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_route)
+app.include_router(bizzbot)
 
 
 
