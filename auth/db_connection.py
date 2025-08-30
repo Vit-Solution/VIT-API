@@ -68,6 +68,7 @@ collection_names = [
     'users',
     'chats',
     'messages',
+    'summaries',
     'faqs',
     'error_logs',
 ]
@@ -82,5 +83,6 @@ for collection_name in collection_names:
 users_collection = db['users']
 chats_collection = db['chats']
 messages_collection = db['messages']
+summaries_collection = db['summaries']
 faqs_collection = db['faqs']
 error_logs_collection = db['error_logs']
