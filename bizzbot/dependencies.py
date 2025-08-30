@@ -5,13 +5,17 @@ from fastapi import HTTPException
 from config import RAG_API_URL
 import httpx
 from bizzbot.schemas import ClientChat, MessageModel, PromptTopic
-from bizzbot.models import Chats, Message
-from auth.db_connection import chats_collection, messages_collection
+from bizzbot.models import Chats, Message, Summaries
+from auth.db_connection import chats_collection, messages_collection, summaries_collection
 
 
 # ----------------------- QUERY RAG API -----------------------
-async def query_rag_api(prompt: MessageModel) -> MessageModel:
+async def query_rag_api(prompt: MessageModel | list[MessageModel]) -> MessageModel:
     return MessageModel(role="assistant", content="Topic 1")
+    # if isinstance(prompt, list):
+    #     prompt_json = [p.model_dump() for p in prompt]
+    # else:
+    #     prompt_json = prompt.model_dump()
 
     # async with httpx.AsyncClient(timeout=30.0) as client:
     #     try:
@@ -19,7 +23,7 @@ async def query_rag_api(prompt: MessageModel) -> MessageModel:
     #         response = await client.post(
     #             RAG_API_URL,
     #             headers={"accept": "application/json", "Content-Type": "application/json"},
-    #             json=prompt.model_dump()
+    #             json=prompt_json
     #         )
     #         response.raise_for_status()
     #     except httpx.HTTPError as e:
@@ -27,10 +31,10 @@ async def query_rag_api(prompt: MessageModel) -> MessageModel:
         
     #     result = response.json()
 
-        # return MessageModel(
-        #     role=result.get("role", "assistant"),
-        #     content=result.get("content", "")
-        # )
+    #     return MessageModel(
+    #         role=result.get("role", "assistant"),
+    #         content=result.get("content", "")
+    #     )
 
 
 # ----------------------- GET TOPIC FROM RAG API -----------------------
@@ -57,8 +61,8 @@ async def get_chat_topic(prompt: ClientChat) -> PromptTopic:
     )
 
 
-
-def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_response_text: str):
+# ----------------------- CREATE NEW CHAT -----------------------
+def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_response_text: str) -> bool:
     # new chat
     chat_details = Chats(
         id=ObjectId(),
@@ -88,20 +92,60 @@ def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_respons
         timestamp=datetime.now(timezone.utc)
     )
 
-    # store chat and message details in db
+    # store chat in db
     chat_insertion_id = chats_collection.insert_one(chat_details.model_dump(by_alias=True))
-    # sleep 1 milisecond to enable achievement of order by timestamp in query
-    time.sleep(0.001)
+    
+    # store message in db
     user_prompt_insertion_id = messages_collection.insert_one(user_prompt.model_dump(by_alias=True))
+    # sleep 1 milisecond to achieve order by timestamp in query
     time.sleep(0.001)
     bot_response_insertion_id = messages_collection.insert_one(bot_response.model_dump(by_alias=True))
 
     if chat_insertion_id.inserted_id and user_prompt_insertion_id.inserted_id and bot_response_insertion_id.inserted_id:
-        return chat_details
+        return True
 
-    return None
+    return False
+
+def insert_existing_chats(new_prompt: ClientChat, response: MessageModel, updated_chat: Chats, summary: Summaries | None = None):
+    new_prompt = Message(
+        id=ObjectId(),
+        chat_id=ObjectId(new_prompt.chat_id),
+        role=new_prompt.role,
+        content=new_prompt.content,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    response = Message(
+        id=ObjectId(),
+        chat_id=ObjectId(new_prompt.chat_id),
+        role=response.role,
+        content=response.content,
+        timestamp=datetime.now(timezone.utc)
+    )
 
 
+    inserted_prompt_id = messages_collection.insert_one(new_prompt.model_dump(by_alias=True)).inserted_id
+    inserted_response_id = messages_collection.insert_one(response.model_dump(by_alias=True)).inserted_id
+
+    if summary:
+        inserted_summary_id = summaries_collection.insert_one(summary.model_dump(by_alias=True)).inserted_id
+    
+    chats_update = chats_collection.update_one(
+        {"_id": updated_chat.id},
+        {
+            "$set": {
+                "total_conversations": updated_chat.total_conversations,
+                "summarised_messages": updated_chat.summarised_messages,
+                "last_updated": updated_chat.last_updated
+            }
+        },
+        upsert=False
+    )
+    
+    if inserted_prompt_id and inserted_response_id and chats_update.modified_count == 1:
+        return True
+
+    return False
 
 # ----------------------- GET CHAT BY ID FROM DB -----------------------
 def get_chat_by_id(chat_id: str) -> Chats | None:

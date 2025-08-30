@@ -1,4 +1,4 @@
-from bson import ObjectId
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -15,6 +15,7 @@ class ClientChat(BaseModel):
 
 
 class MessageModel(BaseModel):
+    summary: str | None = None
     role: str
     content: str | list[str]
 
@@ -32,6 +33,11 @@ class Summary(BaseModel):
 #     message: dict[Summary | list[MessageModel]]
 
 
-class MyChats(BaseModel):
+class ChatsResponse(BaseModel):
+    id: str
     user_id: str
-    chats: dict[str, str] # chat_id: topic
+    topic: str
+    total_conversations: int = 0
+    summarised_messages: int = 0
+    created_at: datetime
+    last_updated: datetime
