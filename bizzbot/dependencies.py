@@ -11,55 +11,50 @@ from auth.db_connection import chats_collection, messages_collection, summaries_
 
 # ----------------------- QUERY RAG API -----------------------
 async def query_rag_api(prompt: MessageModel | list[MessageModel]) -> MessageModel:
-    return MessageModel(role="assistant", content="Topic 1")
-    # if isinstance(prompt, list):
-    #     prompt_json = [p.model_dump() for p in prompt]
-    # else:
-    #     prompt_json = prompt.model_dump()
+    if isinstance(prompt, list):
+        prompt_json = {"messages": [p.model_dump() for p in prompt]}
+    else:
+        prompt_json = {"messages": prompt.model_dump()}
 
-    # async with httpx.AsyncClient(timeout=30.0) as client:
-    #     try:
-    #         # Forward request to external RAG API
-    #         response = await client.post(
-    #             RAG_API_URL,
-    #             headers={"accept": "application/json", "Content-Type": "application/json"},
-    #             json=prompt_json
-    #         )
-    #         response.raise_for_status()
-    #     except httpx.HTTPError as e:
-    #         raise HTTPException(status_code=502, detail=f"Upstream API error: {e}")
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            # Forward request to external RAG API
+            response = await client.post(
+                RAG_API_URL,
+                headers={"accept": "application/json", "Content-Type": "application/json"},
+                json=prompt_json
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Upstream API error: {e}")
         
-    #     result = response.json()
+        result: dict = response.json()
+        data: dict = result.get("message", {})
 
-    #     return MessageModel(
-    #         role=result.get("role", "assistant"),
-    #         content=result.get("content", "")
-    #     )
+        return MessageModel(
+            role=data.get("role", "assistant"),
+            content=data.get("content", "")
+        )
 
 
 # ----------------------- GET TOPIC FROM RAG API -----------------------
 async def get_chat_topic(prompt: ClientChat) -> PromptTopic:
-    if prompt.topic is not None:
-        return PromptTopic(
-            prompt=prompt.content,
-            topic=prompt.topic
-        )
-    
-    prefix = "In three words or less, give a topic for conversations that may arise from this prompt: \n"
-    prompt.content = prefix + prompt.content
-    new_prompt = MessageModel(role="user", content=prompt.content)
+    if not prompt.topic:
+        prefix = "In three words or less, give a topic for conversations that may arise from this prompt: \n"
+        new_prompt = MessageModel(role="user", content=prefix + prompt.content)
 
-    result = await query_rag_api(new_prompt)
-    # sample_result = {
-    #     "role": "assistant",
-    #     "content": "Topic 1"
-    # }
+        result = await query_rag_api(new_prompt)
+
+        return PromptTopic(
+            prompt=prefix + prompt.content,
+            topic=result.content
+        )
 
     return PromptTopic(
         prompt=prompt.content,
-        topic=result.content
+        topic=prompt.topic
     )
-
+    
 
 # ----------------------- CREATE NEW CHAT -----------------------
 def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_response_text: str) -> bool:

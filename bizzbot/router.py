@@ -68,6 +68,7 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
         role="user",
         content=prompt.content
     )
+
     response = await query_rag_api(bot_prompt)
 
     # store chat and message details in db

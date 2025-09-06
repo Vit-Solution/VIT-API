@@ -20,6 +20,13 @@ class MessageModel(BaseModel):
     content: str | list[str]
 
 
+class AiMessageQuery(BaseModel):
+    messages: MessageModel | list[MessageModel]
+
+class AiMessageResponse(BaseModel):
+    message: MessageModel
+
+
 class PromptTopic(BaseModel):
     prompt: str
     topic: str
