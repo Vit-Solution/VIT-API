@@ -16,7 +16,7 @@ async def query_rag_api(prompt: MessageModel | list[MessageModel]) -> MessageMod
     else:
         prompt_json = {"messages": prompt.model_dump()}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         try:
             # Forward request to external RAG API
             response = await client.post(
