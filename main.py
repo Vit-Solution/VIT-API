@@ -33,13 +33,16 @@ app.include_router(bizzbot)
 
 @app.get("/")
 async def home():
-    frontend_url = "https://preview--bizbot-naija-assist.lovable.app/"
+
+    slide_url = "https://bizai-nigerias-ai-busine-9g44w10.gamma.site/"
+    frontend_url = "https://bizai-gamma.vercel.app/"
     
     return {
         "message": "Welcome to BizBot API",
         "version": "1.0.0",
         "description": "API for Business's FAQ's and Knowledge Base",
         "Documentation": "append /docs to the base url to access the documentation",
+        "insight slide url": slide_url,
         "frontend_url": frontend_url
     }
 
