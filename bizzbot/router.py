@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated
 from bson import ObjectId
-from fastapi import Depends
+from fastapi import Depends, Query
 from fastapi import APIRouter
 from auth.dependencies import get_current_user
 from auth.db_connection import messages_collection, summaries_collection, chats_collection
@@ -43,6 +43,33 @@ async def get_user_chats(user_id: Annotated[str, Depends(get_current_user)]) -> 
     ]
 
     return user_chats
+
+
+# ----------------------- GET USER'S CONVERSATIONS -----------------------
+@bizzbot.get("/my-chats/messagess/{chat_id}")
+async def get_chat_messages(
+    chat_id: str,
+    user_id: Annotated[str, Depends(get_current_user)],
+    page_size: int = Query(40, description="Page size/maximum number of results"),
+    page_number: int = Query(1, description="Page number"),
+    ) -> list[MessageModel]:
+    """
+    Get paginated messages of a chat.
+
+    Args:
+        chat_id (str): chat id
+        user_id (str): user id
+        page_size (int, optional): Page size/maximum number of results. Defaults to 40.
+        page_number (int, optional): Page number. Defaults to 1.
+
+    Returns:
+        list[MessageModel]: a list of MessageModel objects
+    """
+    skip = page_size * (page_number - 1)
+    messages = messages_collection.find({"chat_id": ObjectId(chat_id)}).sort("timestamp", 1).skip(skip).limit(page_size)
+    messages = [MessageModel(role=message["role"], content=message["content"]) for message in messages]
+
+    return messages
 
 
 # ----------------------- CHAT WITH BIZZBOT -----------------------
@@ -89,12 +116,17 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
 
 
 @bizzbot.post("/")
-async def chat_with_bizzbot(prompt: ClientChat, user_id: Annotated[str, Depends(get_current_user)]) -> list[MessageModel] | None:
+async def chat_with_bizzbot(
+    prompt: ClientChat,
+    user_id: Annotated[str, Depends(get_current_user)],
+    # page_size: int = Query(40, description="Page size/maximum number of results"),
+    # page_number: int = Query(1, description="Page number"),
+    ) -> list[MessageModel] | None:
     """
     Chat with BizzBot for existing chats.
 
     This endpoint is used for when a user continues a conversation with BizzBot.
-    It queries the bot with the summary of the conversation, the recent raw messages and the latest user prompt.
+    It queries the bot with the summary of very long conversations (if any), the recent messages and the latest user prompt.
     It returns the last 20 prompts and responses to client (that's 40 messages).
 
     Request Body:
@@ -103,6 +135,8 @@ async def chat_with_bizzbot(prompt: ClientChat, user_id: Annotated[str, Depends(
     Response:
         A list of MessageModel objects containing the last 20 prompts and responses.
     """
+    # skip = page_size * (page_number - 1)
+
     # --------------- EXISTING CHATS ---------------
     # retrieve all messages with chat_id: case study = 50 messages
     # 50 messages div 20 = 2 summaries + 10 recent raw messages
