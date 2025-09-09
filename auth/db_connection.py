@@ -2,8 +2,6 @@ from config import mongodb_connection_string
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.errors import CollectionInvalid
-import redis
-from datetime import timedelta
 
 
 client: MongoClient = MongoClient(mongodb_connection_string, server_api=ServerApi('1'))

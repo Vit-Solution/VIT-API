@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated
 from bson import ObjectId
-import httpx
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi import APIRouter
 from auth.dependencies import get_current_user
 from auth.db_connection import messages_collection, summaries_collection, chats_collection
@@ -48,7 +47,7 @@ async def get_user_chats(user_id: Annotated[str, Depends(get_current_user)]) -> 
 
 # ----------------------- CHAT WITH BIZZBOT -----------------------
 @bizzbot.post("/new-chat")
-async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get_current_user)]) -> list[MessageModel] | None:
+async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get_current_user)]) -> list[bool | ChatsResponse | MessageModel] | None:
     """
     Handles new chats with Bizzbot.
     1. It gets the topic from the bot based on the prompt.
@@ -57,7 +56,7 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
     4. It returns the prompt and response to client.
 
     Response:
-        A list of MessageModel objects containing the prompt and response.
+        A list of new chat details and MessageModel objects containing the prompt and response.
     """
     # get topic for new chats
     topic = await get_chat_topic(prompt)
@@ -81,6 +80,7 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
 
     # return prompt and response to client
     client_response = [
+        new_chat,
         MessageModel(role="user", content=prompt.content),
         MessageModel(role="assistant", content=response.content)
     ]

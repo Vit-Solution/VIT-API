@@ -6,7 +6,6 @@ from fastapi.routing import APIRouter
 from fastapi.security import OAuth2PasswordRequestForm
 from config import ACCESS_TOKEN_EXPIRE
 from .dependencies import authenticate_user, create_access_token, create_user, get_user, hash_password
-from auth.db_connection import db
 from auth.models import Token, Users
 from auth.schemas import Signup, SignupResponse
 

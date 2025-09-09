@@ -4,7 +4,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from config import RAG_API_URL
 import httpx
-from bizzbot.schemas import ClientChat, MessageModel, PromptTopic
+from bizzbot.schemas import ChatsResponse, ClientChat, MessageModel, PromptTopic
 from bizzbot.models import Chats, Message, Summaries
 from auth.db_connection import chats_collection, messages_collection, summaries_collection
 
@@ -57,7 +57,7 @@ async def get_chat_topic(prompt: ClientChat) -> PromptTopic:
     
 
 # ----------------------- CREATE NEW CHAT -----------------------
-def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_response_text: str) -> bool:
+def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_response_text: str) -> ChatsResponse | bool:
     # new chat
     chat_details = Chats(
         id=ObjectId(),
@@ -97,7 +97,15 @@ def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_respons
     bot_response_insertion_id = messages_collection.insert_one(bot_response.model_dump(by_alias=True))
 
     if chat_insertion_id.inserted_id and user_prompt_insertion_id.inserted_id and bot_response_insertion_id.inserted_id:
-        return True
+        return ChatsResponse(
+            id=str(chat_details.id),
+            user_id=str(chat_details.user_id),
+            topic=chat_details.topic,
+            total_conversations=chat_details.total_conversations,
+            summarised_messages=chat_details.summarised_messages,
+            created_at=chat_details.created_at,
+            last_updated=chat_details.last_updated
+        )
 
     return False
 
