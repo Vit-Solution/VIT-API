@@ -1,11 +1,15 @@
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 from bson import ObjectId
-from fastapi import Depends, Query
+from fastapi import Depends, HTTPException, Query
 from fastapi import APIRouter
 from auth.dependencies import get_current_user
 from auth.db_connection import messages_collection, summaries_collection, chats_collection
-from bizzbot.dependencies import create_new_chat, get_chat_by_id, get_chat_topic, insert_existing_chats, query_rag_api
+from bizzbot.dependencies import (
+    create_new_chat, edit_chat_topic as edit_topic,
+    get_chat_by_id, get_chat_topic, insert_existing_chats, query_rag_api,
+    delete_chat as delete_chat_by_id
+    )
 from bizzbot.models import Chats, Summaries
 from bizzbot.schemas import MessageModel, ChatsResponse, ClientChat
 from config import RAG_API_URL
@@ -72,7 +76,7 @@ async def get_chat_messages(
     return messages
 
 
-# ----------------------- CHAT WITH BIZZBOT -----------------------
+# ----------------------- CHAT WITH BIZZBOT (NEW CHAT) -----------------------
 @bizzbot.post("/new-chat")
 async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get_current_user)]) -> list[bool | ChatsResponse | MessageModel] | None:
     """
@@ -86,7 +90,7 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
         A list of new chat details and MessageModel objects containing the prompt and response.
     """
     # get topic for new chats
-    topic = await get_chat_topic(prompt)
+    topic = await get_chat_topic(prompt, user_id)
     topic = topic.topic
 
     # query bot with prompt
@@ -115,6 +119,32 @@ async def start_new_chat(prompt: ClientChat, user_id: Annotated[str, Depends(get
     return client_response
 
 
+# ----------------------- EDIT CHAT TOPIC -----------------------
+@bizzbot.put("/edit-topic")
+async def edit_chat_topic(chat_id: str, topic: str, user_id: Annotated[str, Depends(get_current_user)]) -> ChatsResponse | Literal[True]:
+    """
+    Edit the topic of a chat.
+
+    Args:
+        chat_id (str): The ID of the chat to edit.
+        topic (str): The new topic for the chat.
+        user_id (str): The ID of the user making the request.
+
+    Returns:
+        A ChatsResponse object with the updated chat details.
+
+    Raises:
+        HTTPException: If the chat was not found.
+    """
+    updated_chat = edit_topic(chat_id, topic)
+
+    if not updated_chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    return updated_chat
+
+
+# ----------------------- CHAT WITH BIZZBOT (EXISTING CHATS) -----------------------
 @bizzbot.post("/")
 async def chat_with_bizzbot(
     prompt: ClientChat,
@@ -239,3 +269,29 @@ async def chat_with_bizzbot(
 
     if status:
         return client_response
+
+
+# ----------------------- DELETE CHAT -----------------------
+@bizzbot.delete("/delete-chat/{id}")
+async def delete_chat(chat_id: str, user_id: Annotated[str, Depends(get_current_user)]) -> dict[str, str]:
+    """
+    Delete a chat by its ID.
+
+    Args:
+        chat_id (str): The ID of the chat to delete.
+        user_id (str): The ID of the user making the request.
+
+    Returns:
+        A dictionary with a single key "message" containing a success message if the chat is deleted successfully.
+
+    Raises:
+        HTTPException: If the chat is not found.
+    """
+    
+    chat_deletion = delete_chat_by_id(chat_id)
+
+    if chat_deletion:
+        return {"message": f"Chat with id {chat_id}, deleted successfully"}
+
+    raise HTTPException(status_code=404, detail="Chat not found")
+    

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import time
+from typing import Literal
 from bson import ObjectId
 from fastapi import HTTPException
 from config import RAG_API_URL
@@ -38,12 +39,45 @@ async def query_rag_api(prompt: MessageModel | list[MessageModel]) -> MessageMod
 
 
 # ----------------------- GET TOPIC FROM RAG API -----------------------
-async def get_chat_topic(prompt: ClientChat) -> PromptTopic:
+async def get_chat_topic(prompt: ClientChat, user_id: str | None = None) -> PromptTopic:
     if not prompt.topic:
-        prefix = "In three words or less, give a topic for conversations that may arise from this prompt: \n"
-        new_prompt = MessageModel(role="user", content=prefix + prompt.content)
+        # prefix = "In one word or , give a topic for conversations that may arise from this prompt: \n"
+        prefix = """
+        Suggest short conversation topic for this message (just one topic).
 
-        result = await query_rag_api(new_prompt)
+        Rules:
+        - Avoid generic topics like "General", "Miscellaneous", or "Chat".
+        - It should be specific to the content of the message.
+        - Use simple and clear language.
+        - Keep the topic under 8 words max.
+        - It should not be a question.
+        - Avoid overly broad or vague topics.
+        - Make it engaging and relevant to the message.
+        - Expand into related or deeper ideas, not just rephrasing.
+        - Be diverse (cover different angles or directions).
+        \n
+        """
+        new_prompt = MessageModel(role="user", content=prefix + prompt.content)
+        topic_exists = True
+        attempts = 0
+        max_attempts = 10
+        result = None
+
+        while topic_exists and attempts < max_attempts:
+            attempts += 1
+
+            result = await query_rag_api(new_prompt)
+            topic_existing = chats_collection.find_one({
+                "user_id": ObjectId(user_id),
+                "topic": result.content
+                })
+
+            if topic_existing:
+                new_prompt.content += f"\nAvoid this topic: {result.content}"
+            else:
+                topic_exists = False
+            
+            print(f"Attempt {attempts}: Generated topic - {result.content}")
 
         return PromptTopic(
             prompt=prefix + prompt.content,
@@ -109,6 +143,42 @@ def create_new_chat(user_id: str, topic: str, user_prompt_text: str, bot_respons
 
     return False
 
+
+# ----------------------- MODIFY CHAT TOPIC -----------------------
+def edit_chat_topic(chat_id: str, topic: str) -> ChatsResponse | Literal[False]:
+    #get_chat_by_id
+    chat = get_chat_by_id(chat_id)
+
+    # update chat
+    if chat:
+        updated_chat = chats_collection.update_one(
+            {"_id": ObjectId(chat_id)},
+            {
+                "$set": {
+                    "topic": topic,
+                    "last_updated": datetime.now(timezone.utc)
+                }
+            },
+            upsert=False
+        )
+
+    if updated_chat.modified_count == 1:
+        updated_data = ChatsResponse(
+            id=str(chat.id),
+            user_id=str(chat.user_id),
+            topic=topic,
+            total_conversations=chat.total_conversations,
+            summarised_messages=chat.summarised_messages,
+            created_at=chat.created_at,
+            last_updated=datetime.now(timezone.utc)
+        )
+
+        return updated_data
+
+    return False
+
+
+# ----------------------- INSERT EXISTING CHAT -----------------------
 def insert_existing_chats(new_prompt: ClientChat, response: MessageModel, updated_chat: Chats, summary: Summaries | None = None):
     new_prompt = Message(
         id=ObjectId(),
@@ -173,3 +243,15 @@ def get_chat_by_id(chat_id: str) -> Chats | None:
 
         return chat
     return None
+
+
+def delete_chat(id: str) -> bool:
+    # delete chat if it exists
+    messages_deletion = messages_collection.delete_many({"chat_id": ObjectId(id)})
+    summaries_deletion = summaries_collection.delete_many({"chat_id": ObjectId(id)})
+    chat_deletion = chats_collection.delete_one({"_id": ObjectId(id)})
+
+    if chat_deletion.deleted_count == 1:
+        return True
+
+    return False
