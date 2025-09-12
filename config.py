@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     base_url: str = "http://localhost:8000"
     secret_key: str = ""
     algorithm: str = ""
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 300
     mongodb_connection_string: str = ""
     redis_host: str = ""
     redis_port: int = 6379

@@ -64,7 +64,7 @@ def authenticate_user(email: str, password: str):
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = timedelta(minutes=60)):
+def create_access_token(data: dict, expires_delta: timedelta | None = timedelta(minutes=300)):
     """
     Create an access token for the given user data.
 
